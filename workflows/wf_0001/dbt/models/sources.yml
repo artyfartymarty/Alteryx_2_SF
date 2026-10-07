@@ -1,0 +1,14 @@
+version: 2
+sources:
+  - name: wf_0001
+    schema: "{{ var('src_schema') }}"
+    tables:
+      - name: ORDERS
+        columns:
+          - name: ORDER_ID
+          - name: CUSTOMER
+          - name: REGION
+          - name: AMOUNT_TXT
+          - name: QTY
+          - name: ORDER_DATE
+          - name: STATUS

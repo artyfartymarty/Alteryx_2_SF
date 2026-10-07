@@ -1,0 +1,26 @@
+# Program-wide answers. The intake agent reads this first and only asks about what is missing.
+program:
+  target_database: ANALYTICS
+  target_schema: CURATED
+  work_schema: MIG_WORK
+  golden_schema: MIG_GOLDEN
+  raw_schema: RAW
+  warehouse: MIG_WH
+  owner_role: MIGRATION_ROLE
+  dbt: true                    # also deliver a SQL workflow as a dbt project: scripts/export_dbt.py converts its validated build.sql, scripts/validate_dbt.py checks it against the same golden data. false skips both; a Python workflow never has one.
+  column_name_policy: sanitize # sanitize -> UPPER_SNAKE; quote -> keep Alteryx names quoted
+  snowpark_runtime: "3.11"   # RUNTIME_VERSION for LANGUAGE PYTHON procedures. Verify the versions your Snowflake account offers.
+session:
+  TIMEZONE: America/New_York   # Alteryx DateTimeNow() used the server's local zone
+  WEEK_START: 1
+tolerances:
+  float_abs: 1e-6
+  float_rel: 1e-9
+  timestamp_precision: milliseconds
+  rounding:
+    abs: 0.01
+accepted_diff_classes: [ROUNDING, ORDERING]   # anything else is a FAIL until a human accepts it
+
+# Reusable source mappings, keyed by normalized Alteryx source (lower-case, share prefix stripped) or alias.
+sources: {}
+outputs: {}

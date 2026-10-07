@@ -1,0 +1,28 @@
+# not_null and unique state the objective's contract. They are advisories (severity: warn), exactly as
+# scripts/compare.py treats a golden NULL in a NOT NULL column and a repeating key: a test that warns says
+# the contract is worth revisiting; it never fails the build.
+version: 2
+models:
+  - name: customer_order_fact
+    description: "one row per customer and order that matched, plus one per customer with no orders and one per order with no known customer"
+    columns:
+      - name: CUST_ID
+        description: "Customer number"
+      - name: NAME
+        description: "Customer name, trimmed and upper-cased (blank when the source had none); NULL on ORPHAN rows"
+      - name: CITY
+        description: "Customer city, trimmed and upper-cased (blank when the source had none); NULL on ORPHAN rows"
+      - name: TIER
+        description: "Customer tier; NULL on ORPHAN rows"
+      - name: ORDER_ID
+        description: "Order number; NULL on NO_ORDERS rows"
+      - name: AMOUNT
+        description: "Order amount as a number; NULL when the text was not a number or the row has no order"
+      - name: ORDER_DATE
+        description: "Order date; NULL when the text was not a valid date or the row has no order"
+      - name: MATCH_FLAG
+        description: "MATCHED, NO_ORDERS or ORPHAN"
+        data_tests:
+          - not_null:
+              config:
+                severity: warn

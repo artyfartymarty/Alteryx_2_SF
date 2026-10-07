@@ -1,0 +1,1 @@
+- Python: the scoring tool has no SQL equivalent, so the whole workflow is one Snowpark module.

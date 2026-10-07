@@ -1,0 +1,17 @@
+version: 2
+sources:
+  - name: wf_0002
+    schema: "{{ var('src_schema') }}"
+    tables:
+      - name: CUSTOMERS
+        columns:
+          - name: CUST_ID
+          - name: NAME
+          - name: CITY
+          - name: TIER
+      - name: ORDERS_EXPORT
+        columns:
+          - name: ORDER_ID
+          - name: CUST_ID
+          - name: AMOUNT
+          - name: ORDER_DATE

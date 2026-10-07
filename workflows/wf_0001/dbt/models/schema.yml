@@ -1,0 +1,45 @@
+# not_null and unique state the objective's contract. They are advisories (severity: warn), exactly as
+# scripts/compare.py treats a golden NULL in a NOT NULL column and a repeating key: a test that warns says
+# the contract is worth revisiting; it never fails the build.
+version: 2
+models:
+  - name: sales_summary
+    description: "one row per region and size band"
+    columns:
+      - name: REGION
+        description: "Sales region of the orders in the row"
+        data_tests:
+          - not_null:
+              config:
+                severity: warn
+      - name: SIZE_BAND
+        description: "Size band (LARGE, MEDIUM or SMALL) of the orders in the row"
+        data_tests:
+          - not_null:
+              config:
+                severity: warn
+      - name: TOTAL_NET
+        description: "Sum of NET, the discounted order value, for the region and band"
+      - name: ORDERS
+        description: "Number of orders in the region and band"
+      - name: PRICED_ORDERS
+        description: "Number of those orders that have a numeric AMOUNT"
+      - name: LAST_ORDER
+        description: "Latest ORDER_DATE in the region and band"
+  - name: excluded_orders
+    description: "one row per excluded order"
+    columns:
+      - name: CUSTOMER
+        description: "Customer name, cut to 10 characters"
+      - name: ORDER_STATUS
+        description: "Order status (the source STATUS column, renamed)"
+      - name: ORDER_ID
+        description: "Order number"
+      - name: REGION
+        description: "Region of the order; NULL for an order that had none"
+      - name: AMOUNT_TXT
+        description: "Order amount exactly as the source holds it, as text"
+      - name: QTY
+        description: "Quantity ordered"
+      - name: ORDER_DATE
+        description: "Date the order was placed"

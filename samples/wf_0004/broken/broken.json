@@ -1,0 +1,74 @@
+[
+  {
+    "file": "01_macro_filter_dropped.sql",
+    "golden_set": "normal",
+    "expect": {
+      "class": "NULL_SEMANTICS",
+      "columns": [
+        "WEST"
+      ],
+      "output": "INVENTORY_BY_WH",
+      "scope": "columns"
+    },
+    "compiles": true,
+    "note": "The rows the macro's Filter removes (a zero or NULL QTY) reach the Cross Tab: a SKU group whose only stock was there gets a WEST (or NORTH, EAST) cell that Alteryx leaves NULL, and the same cells flow through the Transpose into INVENTORY_LONG's VALUE."
+  },
+  {
+    "file": "02_macro_uses_the_question_default.sql",
+    "golden_set": "normal",
+    "expect": {
+      "class": "NULL_SEMANTICS",
+      "columns": [
+        "WEST"
+      ],
+      "output": "INVENTORY_BY_WH",
+      "scope": "columns"
+    },
+    "compiles": true,
+    "note": "Translating the macro's own default (MinQty 0) instead of the 1 the parent passes keeps the zero-quantity row; it differs from case 01 in exactly one row, because NULL >= 0 is NULL in both models."
+  },
+  {
+    "file": "03_macro_regex_nulls_unmatched.sql",
+    "golden_set": "normal",
+    "expect": {
+      "class": "NULL_SEMANTICS",
+      "columns": [
+        "SKU"
+      ],
+      "output": "INVENTORY_BY_WH",
+      "scope": "columns"
+    },
+    "compiles": true,
+    "note": "The unmatched SKU becomes NULL instead of being kept; SKU is declared NOT NULL, and the same rows reach INVENTORY_LONG."
+  },
+  {
+    "file": "04_cross_tab_fills_missing_with_zero.sql",
+    "golden_set": "normal",
+    "expect": {
+      "class": "NULL_SEMANTICS",
+      "columns": [
+        "EAST",
+        "NORTH",
+        "WEST"
+      ],
+      "output": "INVENTORY_BY_WH",
+      "scope": "columns"
+    },
+    "compiles": true,
+    "note": "Both outputs are keyed, so the comparison is a keyed diff and names the columns outright; a second cluster names VALUE on INVENTORY_LONG, because the same zeros flow through the Transpose."
+  },
+  {
+    "file": "05_transpose_drops_null_values.sql",
+    "golden_set": "normal",
+    "expect": {
+      "class": "NULL_SEMANTICS",
+      "columns": [
+        "VALUE"
+      ],
+      "output": "INVENTORY_LONG",
+      "scope": "rows"
+    },
+    "compiles": true,
+    "note": "Shows what reaching for UNPIVOT costs: the cells with no value are missing from INVENTORY_LONG, a row-presence cluster on the expected side that names VALUE because it is NULL in every one of those rows. Its scope is rows, so it can never be approved. INVENTORY_BY_WH is untouched by this edit and reports nothing."
+  }
+]

@@ -1,0 +1,57 @@
+{
+  "golden_set": "normal",
+  "language": "sql",
+  "verdict": "PASS",
+  "checks": {
+    "REGION_ATTAINMENT:target": {
+      "schema": "PASS",
+      "nullability": "PASS",
+      "counts": {
+        "expected": 3,
+        "actual": 3,
+        "verdict": "PASS"
+      },
+      "aggregates": "PASS",
+      "aggregates_rows": {
+        "rows": 3,
+        "verdict": "PASS"
+      },
+      "set_diff": {
+        "only_expected": 0,
+        "only_actual": 0
+      },
+      "column_mismatches": {},
+      "column_counts": {},
+      "aggregate_mismatches": {}
+    },
+    "ATTAINMENT_HISTORY:target": {
+      "schema": "PASS",
+      "nullability": "PASS",
+      "counts": {
+        "expected": 5,
+        "actual": 5,
+        "verdict": "PASS"
+      },
+      "aggregates": "PASS",
+      "aggregates_rows": {
+        "rows": 5,
+        "verdict": "PASS"
+      },
+      "set_diff": {
+        "only_expected": 0,
+        "only_actual": 0
+      },
+      "column_mismatches": {},
+      "column_counts": {},
+      "aggregate_mismatches": {}
+    }
+  },
+  "diff_clusters": [],
+  "normalizations_applied": [],
+  "idempotent": true,
+  "idempotency_diff": [],
+  "runtime_ms": 607,
+  "credits": null,
+  "needs_human": false,
+  "truncated": false
+}

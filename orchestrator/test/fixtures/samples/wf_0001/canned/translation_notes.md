@@ -1,0 +1,1 @@
+- Filter: a NULL region goes to the False branch in Alteryx, so it is kept by the summary's WHERE.

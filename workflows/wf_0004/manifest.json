@@ -1,0 +1,38 @@
+{
+  "id": "wf_0004",
+  "status": {
+    "parse": "PARSED",
+    "intake": "READY",
+    "analyze": "DONE",
+    "golden": "DONE",
+    "translate": "VALIDATED",
+    "document": "DONE"
+  },
+  "metrics": {},
+  "source": {
+    "file": "inventory.yxmd",
+    "alteryx_version": "2023.1",
+    "engine": "E1",
+    "server_schedule": "0 6 * * 1-5",
+    "owner": "wf_owner",
+    "consumers": []
+  },
+  "updated_at": "2026-10-07T00:36:53.635Z",
+  "parse": {
+    "attempts": 1,
+    "extensions": []
+  },
+  "answers": {
+    "Q1": "WH.RAW.STOCK",
+    "Q3": "ANALYTICS.CURATED.INVENTORY_BY_WH",
+    "Q4": "ANALYTICS.CURATED.INVENTORY_LONG"
+  },
+  "tier": "T1",
+  "language": "sql",
+  "golden_sets": [
+    "normal",
+    "period_end",
+    "empty",
+    "edge"
+  ]
+}

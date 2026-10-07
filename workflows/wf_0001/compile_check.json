@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "errors": [],
+  "lint": {
+    "lines": 40,
+    "statements": 4,
+    "ctes": 1,
+    "flags": []
+  }
+}

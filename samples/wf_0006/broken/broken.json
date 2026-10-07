@@ -1,0 +1,32 @@
+[
+  {
+    "file": "01_cancellation_reset_ignored.py",
+    "golden_set": "normal",
+    "expect": {
+      "class": "LOGIC",
+      "columns": [
+        "TOTAL_RECOGNIZED"
+      ],
+      "output": "REVENUE_BY_PERIOD",
+      "scope": "columns"
+    },
+    "compiles": true,
+    "note": "The output is keyed on PERIOD, so the comparison joins on it and names the one period that moved: the one holding ACME's cancelled 2026-03 period, which recognizes the balance the reset should have dropped. TOTAL_DEFERRED is NOT in the cluster and that is correct -- ACME's carried balance happens to be fully recognized under either rule."
+  },
+  {
+    "file": "02_summarize_drops_period.py",
+    "golden_set": "normal",
+    "expect": {
+      "class": "LOGIC",
+      "columns": [
+        "CUSTOMERS",
+        "TOTAL_DEFERRED",
+        "TOTAL_RECOGNIZED"
+      ],
+      "output": "REVENUE_BY_PERIOD",
+      "scope": "columns"
+    },
+    "compiles": true,
+    "note": "Two clusters on every set that has rows: the keyed value cluster (the one period that survives keeps its key but carries the totals of the whole schedule) and a LOGIC row cluster for the periods that are simply missing. Even the `empty` set FAILs: an aggregate with no group-by returns one row of NULLs over no rows, where Alteryx's grouped Summarize returns none."
+  }
+]

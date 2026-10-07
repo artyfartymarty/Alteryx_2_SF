@@ -1,0 +1,74 @@
+[
+  {
+    "file": "01_datetime_reads_month_first.sql",
+    "golden_set": "normal",
+    "expect": {
+      "class": "LOGIC",
+      "columns": [
+        "CLOSING_BAL",
+        "ENTRIES",
+        "HAS_PERIOD_END",
+        "TOTAL"
+      ],
+      "output": "GL_SUMMARY",
+      "scope": "columns"
+    },
+    "compiles": true,
+    "note": "Some postings swap day and month and some become NULL, so postings land in other periods: the keyed comparison names the four value columns of the groups that survive, and a LOGIC row cluster the group that is missing."
+  },
+  {
+    "file": "02_unique_keeps_the_lowest_entry_id.sql",
+    "golden_set": "normal",
+    "expect": {
+      "class": "LOGIC",
+      "columns": [
+        "CLOSING_BAL",
+        "TOTAL"
+      ],
+      "output": "GL_SUMMARY",
+      "scope": "columns"
+    },
+    "compiles": true,
+    "note": "Both columns are written by the Summarize downstream of the Unique and fail the same way, so compare.py groups them into one cluster."
+  },
+  {
+    "file": "03_postsql_not_translated.sql",
+    "golden_set": "normal",
+    "expect": {
+      "class": "NULL_SEMANTICS",
+      "columns": [
+        "LOADED_FLAG"
+      ],
+      "output": "GL_SUMMARY",
+      "scope": "columns"
+    },
+    "compiles": false,
+    "note": "Every row this run inserts has LOADED_FLAG NULL where the golden target has 'Y', and no mismatch is value-against-value. compile_check.py refuses this build (write_mode:pre_post: tool 10 has a PostSQL and nothing follows the write)."
+  },
+  {
+    "file": "04_presql_not_translated.sql",
+    "golden_set": "normal",
+    "expect": {
+      "class": "LOGIC",
+      "columns": [],
+      "output": "GL_SUMMARY",
+      "scope": "rows"
+    },
+    "compiles": false,
+    "note": "The 2019-12 row the DELETE should have removed is present in the migrated target and absent from the golden output: a row-presence cluster on the actual side. It names no column, and a cluster whose scope is rows can never be approved, so the verdict is FAIL whatever accepted_diff_classes says. compile_check.py refuses this build (write_mode:pre_post: tool 10 has a PreSQL and nothing precedes the write)."
+  },
+  {
+    "file": "05_last_translated_as_max.sql",
+    "golden_set": "normal",
+    "expect": {
+      "class": "LOGIC",
+      "columns": [
+        "CLOSING_BAL"
+      ],
+      "output": "GL_SUMMARY",
+      "scope": "columns"
+    },
+    "compiles": true,
+    "note": "`normal`'s (4000, 2026-08) group carries a fifth row whose running balance dips from a peak of 300.0 down to its actual last value of -100.0: expected -100.0, actual 300.0. Every other group peaks on its own last row, so the other sets and columns are unaffected."
+  }
+]

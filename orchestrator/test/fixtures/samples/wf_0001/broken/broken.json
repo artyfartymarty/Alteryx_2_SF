@@ -1,0 +1,8 @@
+[
+  {
+    "file": "01_filter_drops_null_region.sql",
+    "golden_set": "normal",
+    "expect": { "class": "NULL_SEMANTICS", "columns": ["REGION"] },
+    "note": "A whole-file broken build for the fixer scenarios: the WHERE drops the NULL-region rows Alteryx keeps."
+  }
+]

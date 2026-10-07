@@ -1,0 +1,31 @@
+[
+  {
+    "file": "01_filter_not_translated.sql",
+    "golden_set": "normal",
+    "expect": {
+      "class": "LOGIC",
+      "columns": [],
+      "output": "REGION_ATTAINMENT",
+      "scope": "rows"
+    },
+    "compiles": true,
+    "note": "On `normal` the prior-year (REGION, PERIOD) group is a row only in the actual REGION_ATTAINMENT, which names no column because nothing in it is NULL; on `period_end` the same group also reaches ATTAINMENT_HISTORY, where it overwrites a history row. The `empty` and `edge` sets have no prior-year group and pass."
+  },
+  {
+    "file": "02_merge_key_narrowed.sql",
+    "golden_set": "normal",
+    "expect": {
+      "class": "LOGIC",
+      "columns": [
+        "ACTUAL_TOTAL",
+        "LINES",
+        "TARGET_TOTAL"
+      ],
+      "output": "ATTAINMENT_HISTORY",
+      "scope": "columns"
+    },
+    "compiles": false,
+    "deterministic": false,
+    "note": "The merge matches a region's other periods: the before-row for WEST 2025-12 is overwritten by WEST 2026-01's values and a region's second period is never inserted. compile_check.py refuses this build (write_mode: the MERGE must match on exactly the objective's keys), so only a validation run catches it here and the orchestrator's fix-loop scenario never serves it. Which of a region's periods survives is not deterministic (a MERGE with two source rows for one target row), so the two runs of the idempotency check can differ: this is the one broken build whose report may say idempotent: false."
+  }
+]

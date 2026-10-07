@@ -1,0 +1,252 @@
+{
+  "workflow": "wf_0002",
+  "title": "Customer orders fact load",
+  "purpose": "Pairs each customer with their orders and appends the result to CUSTOMER_ORDER_FACT, flagging each row MATCHED (a customer with an order), NO_ORDERS (a customer with none) or ORPHAN (an order whose customer is unknown).",
+  "tier": "T1",
+  "language": "sql",
+  "language_reason": null,
+  "inputs": [
+    {
+      "tool_id": "1",
+      "logical": "CUSTOMERS",
+      "columns": [
+        {
+          "name": "CUST_ID",
+          "type": "NUMBER(38,0)",
+          "nullable": true
+        },
+        {
+          "name": "NAME",
+          "type": "VARCHAR(60)",
+          "nullable": true
+        },
+        {
+          "name": "CITY",
+          "type": "VARCHAR(40)",
+          "nullable": true
+        },
+        {
+          "name": "TIER",
+          "type": "VARCHAR(10)",
+          "nullable": true
+        }
+      ],
+      "keys": []
+    },
+    {
+      "tool_id": "3",
+      "logical": "ORDERS_EXPORT",
+      "columns": [
+        {
+          "name": "ORDER_ID",
+          "type": "VARCHAR(254)",
+          "nullable": true
+        },
+        {
+          "name": "CUST_ID",
+          "type": "VARCHAR(254)",
+          "nullable": true
+        },
+        {
+          "name": "AMOUNT",
+          "type": "VARCHAR(254)",
+          "nullable": true
+        },
+        {
+          "name": "ORDER_DATE",
+          "type": "VARCHAR(254)",
+          "nullable": true
+        }
+      ],
+      "keys": []
+    }
+  ],
+  "outputs": [
+    {
+      "tool_id": "10",
+      "logical": "CUSTOMER_ORDER_FACT",
+      "write_mode": "append",
+      "pre_sql": null,
+      "post_sql": null,
+      "grain": "one row per customer and order that matched, plus one per customer with no orders and one per order with no known customer",
+      "columns": [
+        {
+          "name": "CUST_ID",
+          "type": "NUMBER(38,0)",
+          "nullable": true,
+          "meaning": "Customer number"
+        },
+        {
+          "name": "NAME",
+          "type": "VARCHAR(60)",
+          "nullable": true,
+          "meaning": "Customer name, trimmed and upper-cased (blank when the source had none); NULL on ORPHAN rows"
+        },
+        {
+          "name": "CITY",
+          "type": "VARCHAR(40)",
+          "nullable": true,
+          "meaning": "Customer city, trimmed and upper-cased (blank when the source had none); NULL on ORPHAN rows"
+        },
+        {
+          "name": "TIER",
+          "type": "VARCHAR(10)",
+          "nullable": true,
+          "meaning": "Customer tier; NULL on ORPHAN rows"
+        },
+        {
+          "name": "ORDER_ID",
+          "type": "NUMBER(38,0)",
+          "nullable": true,
+          "meaning": "Order number; NULL on NO_ORDERS rows"
+        },
+        {
+          "name": "AMOUNT",
+          "type": "FLOAT",
+          "nullable": true,
+          "meaning": "Order amount as a number; NULL when the text was not a number or the row has no order"
+        },
+        {
+          "name": "ORDER_DATE",
+          "type": "DATE",
+          "nullable": true,
+          "meaning": "Order date; NULL when the text was not a valid date or the row has no order"
+        },
+        {
+          "name": "MATCH_FLAG",
+          "type": "VARCHAR(12)",
+          "nullable": false,
+          "meaning": "MATCHED, NO_ORDERS or ORPHAN"
+        }
+      ],
+      "keys": [],
+      "row_relation": "expand",
+      "ordering": {
+        "keys": [],
+        "alteryx_deterministic": true,
+        "order_dependent_columns": []
+      },
+      "tolerances": {},
+      "normalizations": []
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "name": "Clean the customer list",
+      "does": "Reads CUSTOMERS and, for NAME and CITY, replaces NULL with blank, trims the blanks and upper-cases.",
+      "tools": [
+        "1",
+        "2"
+      ],
+      "feeds": [
+        "s3"
+      ]
+    },
+    {
+      "id": "s2",
+      "name": "Type the orders export",
+      "does": "Reads the nightly orders export, where every column arrives as text, and converts ORDER_ID and CUST_ID to whole numbers, AMOUNT to a number and ORDER_DATE to a date; text that cannot be converted becomes NULL.",
+      "tools": [
+        "3",
+        "4"
+      ],
+      "feeds": [
+        "s3"
+      ]
+    },
+    {
+      "id": "s3",
+      "name": "Match customers to orders and flag the outcome",
+      "does": "Joins customers to orders on CUST_ID and flags each outcome: MATCHED for a customer with an order, NO_ORDERS for a customer with none, ORPHAN for an order whose customer is not in the list.",
+      "tools": [
+        "5",
+        "6",
+        "7",
+        "8"
+      ],
+      "feeds": [
+        "s4"
+      ]
+    },
+    {
+      "id": "s4",
+      "name": "Stack the outcomes and append them",
+      "does": "Stacks the three outcomes by column name and appends them to CUSTOMER_ORDER_FACT, which keeps the rows it already holds.",
+      "tools": [
+        "9",
+        "10"
+      ],
+      "feeds": [
+        "out:10"
+      ]
+    }
+  ],
+  "no_effect": [
+    {
+      "tool_id": "11",
+      "reason": "Browse tool: shows the stacked rows to a person, changes nothing"
+    }
+  ],
+  "rules": [
+    "A customer with several orders produces one row per order.",
+    "A customer with no order is kept, with MATCH_FLAG NO_ORDERS and NULL order columns.",
+    "An order whose customer is not in the customer list is kept, with MATCH_FLAG ORPHAN and NULL customer columns.",
+    "Text in the orders export that is not a valid number or date becomes NULL; it never fails the run.",
+    "The run appends to CUSTOMER_ORDER_FACT: the rows already in it stay, and the table after the append is what counts."
+  ],
+  "parity_risks": [
+    {
+      "tool_id": "2",
+      "class": "NULL_SEMANTICS",
+      "note": "Data Cleansing replaces NULL strings with blank before trimming, so NAME and CITY are never NULL downstream of it."
+    },
+    {
+      "tool_id": "2",
+      "class": "LOGIC",
+      "note": "The options run in the macro's own order (replace nulls, trim, modify case); applying UPPER before TRIM would agree here but not once a case-changing option is combined with a character-removing one."
+    },
+    {
+      "tool_id": "2",
+      "class": "LOGIC",
+      "note": "UPPER is applied by Snowflake's own Unicode case rules, which are not guaranteed to match Alteryx's for every script; the edge golden set exercises Latin Extended and CJK text."
+    },
+    {
+      "tool_id": "4",
+      "class": "NULL_SEMANTICS",
+      "note": "The Select retypes text to Int32/Double/Date; Alteryx warns and nulls on text it cannot read, so every conversion is a TRY_ form -- 'abc' and the empty string give a NULL AMOUNT."
+    },
+    {
+      "tool_id": "4",
+      "class": "TYPE",
+      "note": "A date that does not exist (2026-02-30) and a non-ISO date (31/12/2026) both become NULL rather than raising; ORDER_DATE is read with an explicit YYYY-MM-DD format."
+    },
+    {
+      "tool_id": "4",
+      "class": "ROUNDING",
+      "note": "Alteryx's integer coercion rounds half away from zero, which TRY_TO_NUMBER(x, 38, 0) also does; the sample data is whole numbers, so nothing here proves it."
+    },
+    {
+      "tool_id": "5",
+      "class": "NULL_SEMANTICS",
+      "note": "A NULL join key matches nothing, so a NULL-CUST_ID customer leaves on L and a NULL-CUST_ID order leaves on R; the anti-joins use NOT EXISTS, which keeps that behaviour, where a NOT IN would drop every row once the other side held a NULL."
+    },
+    {
+      "tool_id": "5",
+      "class": "LOGIC",
+      "note": "Join key comparison is exact and case-sensitive -- no trimming, no case folding, no numeric coercion of text; both sides are already NUMBER here."
+    },
+    {
+      "tool_id": "9",
+      "class": "LOGIC",
+      "note": "Union by name: the output keeps input #1's field order and a field an input lacks arrives NULL, so every branch is projected into tool 6's column list with typed NULLs before the UNION ALL."
+    },
+    {
+      "tool_id": "10",
+      "class": "LOGIC",
+      "note": "Append Existing adds to whatever the target already holds and maps columns to it by name, so the golden output is the target's state AFTER the append, not just this run's rows."
+    }
+  ],
+  "questions": [],
+  "answered": []
+}

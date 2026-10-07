@@ -1,0 +1,43 @@
+# not_null and unique state the objective's contract. They are advisories (severity: warn), exactly as
+# scripts/compare.py treats a golden NULL in a NOT NULL column and a repeating key: a test that warns says
+# the contract is worth revisiting; it never fails the build.
+version: 2
+models:
+  - name: region_attainment
+    description: "one row per region and period of the current year"
+    columns:
+      - name: REGION
+        description: "Sales region"
+        data_tests:
+          - not_null:
+              config:
+                severity: warn
+      - name: PERIOD
+        description: "Period, starting with its year"
+        data_tests:
+          - not_null:
+              config:
+                severity: warn
+      - name: TARGET_TOTAL
+        description: "Sum of the plan targets for the region and period (a target counts once per matching actual line)"
+      - name: ACTUAL_TOTAL
+        description: "Sum of the booked actuals for the region and period; NULL when every actual line is NULL"
+      - name: LINES
+        description: "Number of joined target and actual rows in the group"
+        data_tests:
+          - not_null:
+              config:
+                severity: warn
+  - name: attainment_history
+    description: "one row per region and period; rows of earlier years stay in the table"
+    columns:
+      - name: REGION
+        description: "Sales region"
+      - name: PERIOD
+        description: "Period, starting with its year"
+      - name: TARGET_TOTAL
+        description: "Sum of the plan targets for the region and period (a target counts once per matching actual line)"
+      - name: ACTUAL_TOTAL
+        description: "Sum of the booked actuals for the region and period; NULL when every actual line is NULL"
+      - name: LINES
+        description: "Number of joined target and actual rows in the group"

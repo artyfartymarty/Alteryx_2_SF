@@ -1,0 +1,136 @@
+{
+  "workflow": "wf_0005",
+  "title": "Vendor account dedupe",
+  "purpose": "Reads vendor accounts, keeps one row per account with the third-party Acme Dedupe tool, notifies the vendor team with a Run Command and writes the cleaned accounts. It cannot be migrated automatically: the vendor tool's behaviour and the notification script are not something a translation can reproduce.",
+  "tier": "T3",
+  "language": "sql",
+  "language_reason": null,
+  "inputs": [
+    {
+      "tool_id": "1",
+      "logical": null,
+      "columns": [
+        {
+          "name": "ACCT",
+          "type": "VARCHAR(20)",
+          "nullable": true
+        },
+        {
+          "name": "UPDATED",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "BALANCE",
+          "type": "FLOAT",
+          "nullable": true
+        }
+      ],
+      "keys": []
+    }
+  ],
+  "outputs": [
+    {
+      "tool_id": "4",
+      "logical": null,
+      "write_mode": "overwrite",
+      "pre_sql": null,
+      "post_sql": null,
+      "grain": "one row per vendor account, if the vendor tool does what its configuration suggests (unverified)",
+      "columns": [
+        {
+          "name": "ACCT",
+          "type": "VARCHAR(20)",
+          "nullable": true,
+          "meaning": "Vendor account number"
+        },
+        {
+          "name": "UPDATED",
+          "type": "DATE",
+          "nullable": true,
+          "meaning": "Date the account was last updated; NULL when the vendor has none"
+        },
+        {
+          "name": "BALANCE",
+          "type": "FLOAT",
+          "nullable": true,
+          "meaning": "Account balance"
+        }
+      ],
+      "keys": [],
+      "row_relation": "filter",
+      "ordering": {
+        "keys": [],
+        "alteryx_deterministic": false,
+        "order_dependent_columns": []
+      },
+      "tolerances": {},
+      "normalizations": []
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "name": "Read vendor accounts",
+      "does": "Reads ACCOUNTS: ACCT, UPDATED and BALANCE.",
+      "tools": [
+        "1"
+      ],
+      "feeds": [
+        "s2"
+      ]
+    },
+    {
+      "id": "s2",
+      "name": "Dedupe the accounts with the vendor tool",
+      "does": "The third-party Acme Dedupe tool is configured with key ACCT, keep MaxDate and date field UPDATED, which reads as one row per ACCT chosen by UPDATED. Its configuration does not say what happens to a NULL UPDATED, to a tie on UPDATED, or whether it compares the date or a full timestamp.",
+      "tools": [
+        "2"
+      ],
+      "feeds": [
+        "s3"
+      ]
+    },
+    {
+      "id": "s3",
+      "name": "Notify the vendor team",
+      "does": "Runs notify.bat on the Alteryx host with a Run Command; the rows pass through.",
+      "tools": [
+        "3"
+      ],
+      "feeds": [
+        "s4"
+      ]
+    },
+    {
+      "id": "s4",
+      "name": "Write the clean accounts",
+      "does": "Writes ACCOUNTS_CLEAN, replacing it.",
+      "tools": [
+        "4"
+      ],
+      "feeds": [
+        "out:4"
+      ]
+    }
+  ],
+  "no_effect": [],
+  "rules": [
+    "The workflow is not translated: tool 2 is a third-party plugin the parser does not know and tool 3 starts a process on a host, which Snowflake cannot do, so the tier is T3 and the translate stage ends at MANUAL.",
+    "ACCOUNTS_CLEAN is replaced on every run."
+  ],
+  "parity_risks": [
+    {
+      "tool_id": "2",
+      "class": "UNKNOWN",
+      "note": "What the Acme Dedupe tool does with a NULL UPDATED, with a tie on UPDATED, and whether it compares the date or a full timestamp: its XML does not say, and each choice would show up as a data difference rather than an error. A person who knows the vendor tool has to decide before anyone writes the translation."
+    },
+    {
+      "tool_id": "3",
+      "class": "UNKNOWN",
+      "note": "What replaces notify.bat -- a Snowflake task, an external function, a step in whatever orchestrates the migrated build, or nothing: Snowflake cannot start a process on a host, so the notification has to be rebuilt outside the warehouse."
+    }
+  ],
+  "questions": [],
+  "answered": []
+}

@@ -1,0 +1,22 @@
+# not_null and unique state the objective's contract. They are advisories (severity: warn), exactly as
+# scripts/compare.py treats a golden NULL in a NOT NULL column and a repeating key: a test that warns says
+# the contract is worth revisiting; it never fails the build.
+version: 2
+models:
+  - name: gl_summary
+    description: "one row per account and period"
+    columns:
+      - name: ACCT
+        description: "Account"
+      - name: PERIOD
+        description: "Accounting period"
+      - name: TOTAL
+        description: "Sum of the kept entries' AMOUNT for the account and period"
+      - name: CLOSING_BAL
+        description: "Running balance of the account at its last entry in the period"
+      - name: ENTRIES
+        description: "Number of kept entries (rows, whether or not they carry an ENTRY_ID)"
+      - name: HAS_PERIOD_END
+        description: "Y when any kept entry was posted on the period-end date, otherwise N"
+      - name: LOADED_FLAG
+        description: "Set to Y by the PostSQL on rows that have none yet; not written by the summary itself, so NULL on a row the run inserted until the PostSQL runs"

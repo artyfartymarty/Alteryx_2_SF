@@ -1,0 +1,285 @@
+{
+  "workflow": "wf_0001",
+  "title": "Sales summary by region and size band",
+  "purpose": "Totals each region's net order value by size band for the weekly sales review, leaving the WEST region out, and lists the orders it left out.",
+  "tier": "T1",
+  "language": "sql",
+  "language_reason": null,
+  "inputs": [
+    {
+      "tool_id": "1",
+      "logical": "ORDERS",
+      "columns": [
+        {
+          "name": "ORDER_ID",
+          "type": "NUMBER(38,0)",
+          "nullable": true
+        },
+        {
+          "name": "CUSTOMER",
+          "type": "VARCHAR(50)",
+          "nullable": true
+        },
+        {
+          "name": "REGION",
+          "type": "VARCHAR(20)",
+          "nullable": true
+        },
+        {
+          "name": "AMOUNT_TXT",
+          "type": "VARCHAR(20)",
+          "nullable": true
+        },
+        {
+          "name": "QTY",
+          "type": "NUMBER(38,0)",
+          "nullable": true
+        },
+        {
+          "name": "ORDER_DATE",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "STATUS",
+          "type": "VARCHAR(10)",
+          "nullable": true
+        }
+      ],
+      "keys": []
+    }
+  ],
+  "outputs": [
+    {
+      "tool_id": "7",
+      "logical": "SALES_SUMMARY",
+      "write_mode": "overwrite",
+      "pre_sql": null,
+      "post_sql": null,
+      "grain": "one row per region and size band",
+      "columns": [
+        {
+          "name": "REGION",
+          "type": "VARCHAR(20)",
+          "nullable": false,
+          "meaning": "Sales region of the orders in the row"
+        },
+        {
+          "name": "SIZE_BAND",
+          "type": "VARCHAR(10)",
+          "nullable": false,
+          "meaning": "Size band (LARGE, MEDIUM or SMALL) of the orders in the row"
+        },
+        {
+          "name": "TOTAL_NET",
+          "type": "FLOAT",
+          "nullable": true,
+          "meaning": "Sum of NET, the discounted order value, for the region and band"
+        },
+        {
+          "name": "ORDERS",
+          "type": "NUMBER(38,0)",
+          "nullable": true,
+          "meaning": "Number of orders in the region and band"
+        },
+        {
+          "name": "PRICED_ORDERS",
+          "type": "NUMBER(38,0)",
+          "nullable": true,
+          "meaning": "Number of those orders that have a numeric AMOUNT"
+        },
+        {
+          "name": "LAST_ORDER",
+          "type": "DATE",
+          "nullable": true,
+          "meaning": "Latest ORDER_DATE in the region and band"
+        }
+      ],
+      "keys": [
+        "REGION",
+        "SIZE_BAND"
+      ],
+      "row_relation": "aggregate",
+      "ordering": {
+        "keys": [
+          "TOTAL_NET",
+          "REGION"
+        ],
+        "alteryx_deterministic": true,
+        "order_dependent_columns": []
+      },
+      "tolerances": {},
+      "normalizations": []
+    },
+    {
+      "tool_id": "8",
+      "logical": "EXCLUDED_ORDERS",
+      "write_mode": "overwrite",
+      "pre_sql": null,
+      "post_sql": null,
+      "grain": "one row per excluded order",
+      "columns": [
+        {
+          "name": "CUSTOMER",
+          "type": "VARCHAR(10)",
+          "nullable": true,
+          "meaning": "Customer name, cut to 10 characters"
+        },
+        {
+          "name": "ORDER_STATUS",
+          "type": "VARCHAR(10)",
+          "nullable": true,
+          "meaning": "Order status (the source STATUS column, renamed)"
+        },
+        {
+          "name": "ORDER_ID",
+          "type": "NUMBER(38,0)",
+          "nullable": true,
+          "meaning": "Order number"
+        },
+        {
+          "name": "REGION",
+          "type": "VARCHAR(20)",
+          "nullable": true,
+          "meaning": "Region of the order; NULL for an order that had none"
+        },
+        {
+          "name": "AMOUNT_TXT",
+          "type": "VARCHAR(20)",
+          "nullable": true,
+          "meaning": "Order amount exactly as the source holds it, as text"
+        },
+        {
+          "name": "QTY",
+          "type": "NUMBER(38,0)",
+          "nullable": true,
+          "meaning": "Quantity ordered"
+        },
+        {
+          "name": "ORDER_DATE",
+          "type": "DATE",
+          "nullable": true,
+          "meaning": "Date the order was placed"
+        }
+      ],
+      "keys": [],
+      "row_relation": "filter",
+      "ordering": {
+        "keys": [],
+        "alteryx_deterministic": true,
+        "order_dependent_columns": []
+      },
+      "tolerances": {},
+      "normalizations": []
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "name": "Read and clean orders",
+      "does": "Reads the ORDERS extract, cuts CUSTOMER to its first 10 characters and renames STATUS to ORDER_STATUS.",
+      "tools": [
+        "1",
+        "2"
+      ],
+      "feeds": [
+        "s2"
+      ]
+    },
+    {
+      "id": "s2",
+      "name": "Set the WEST region aside",
+      "does": "Splits the orders on REGION != \"WEST\": the True side carries on to the summary; the False side (WEST orders, and orders with no REGION) goes to the excluded list.",
+      "tools": [
+        "3"
+      ],
+      "feeds": [
+        "s3",
+        "s5"
+      ]
+    },
+    {
+      "id": "s3",
+      "name": "Work out net value and size band",
+      "does": "Converts AMOUNT_TXT to a number (AMOUNT), applies a 10% discount on quantities of 10 or more and rounds to the cent (NET), and bands each order LARGE, MEDIUM or SMALL by AMOUNT (SIZE_BAND).",
+      "tools": [
+        "4"
+      ],
+      "feeds": [
+        "s4"
+      ]
+    },
+    {
+      "id": "s4",
+      "name": "Total by region and size band",
+      "does": "Sums NET, counts orders and priced orders and takes the latest order date for each region and size band, sorts the biggest totals first and writes SALES_SUMMARY.",
+      "tools": [
+        "5",
+        "6",
+        "7"
+      ],
+      "feeds": [
+        "out:7"
+      ]
+    },
+    {
+      "id": "s5",
+      "name": "List the excluded orders",
+      "does": "Writes the orders that were set aside, with their cleaned columns, to EXCLUDED_ORDERS.",
+      "tools": [
+        "8"
+      ],
+      "feeds": [
+        "out:8"
+      ]
+    }
+  ],
+  "no_effect": [],
+  "rules": [
+    "Orders whose REGION is WEST are left out of SALES_SUMMARY and written to EXCLUDED_ORDERS instead.",
+    "An order with no REGION is not counted in the summary either: it is written to EXCLUDED_ORDERS with the WEST orders.",
+    "NET is AMOUNT times 0.9 when QTY is 10 or more, otherwise AMOUNT times 1, rounded to the cent.",
+    "SIZE_BAND is LARGE when AMOUNT is 1000 or more, MEDIUM when it is 100 or more and SMALL otherwise; an order whose AMOUNT_TXT is not a plain number has no AMOUNT and is SMALL.",
+    "CUSTOMER is cut to its first 10 characters, as Alteryx's String(10) does without complaint.",
+    "SALES_SUMMARY is sorted by TOTAL_NET, biggest first, then by REGION."
+  ],
+  "parity_risks": [
+    {
+      "tool_id": "3",
+      "class": "NULL_SEMANTICS",
+      "note": "Filter [REGION] != \"WEST\": a NULL REGION makes the expression NULL, and Alteryx sends NULL to the False anchor, so tool 8's stream must keep those rows."
+    },
+    {
+      "tool_id": "4",
+      "class": "ROUNDING",
+      "note": "Round([AMOUNT] * IIF([QTY] >= 10, 0.9, 1), 0.01) is half away from zero on exact decimals; the arithmetic is done in NUMBER(38,10) and only the result is stored back as a Double."
+    },
+    {
+      "tool_id": "4",
+      "class": "NULL_SEMANTICS",
+      "note": "ToNumber warns and nulls on text that is not a plain decimal (abc, 1,200.50, the empty string), and a NULL AMOUNT makes every comparison in the SIZE_BAND band NULL, so those rows fall to the ELSE branch SMALL."
+    },
+    {
+      "tool_id": "2",
+      "class": "TRUNCATION",
+      "note": "Select retypes CUSTOMER to String(10): Alteryx truncates silently where Snowflake's VARCHAR(10) would raise, so the translation uses LEFT(CUSTOMER, 10)."
+    },
+    {
+      "tool_id": "5",
+      "class": "LOGIC",
+      "note": "Alteryx's Count counts rows where CountNonNull counts values: ORDERS is the number of rows in the group, PRICED_ORDERS only the rows with a non-NULL AMOUNT."
+    },
+    {
+      "tool_id": "5",
+      "class": "ROUNDING",
+      "note": "Sum over a Double column accumulates in binary floating point; the translation adds the exact decimal values and stores the total once, so TOTAL_NET agrees to the cent."
+    },
+    {
+      "tool_id": "6",
+      "class": "ORDERING",
+      "note": "NULL placement differs between ascending and descending: Alteryx puts NULL first ascending and last descending, so the ORDER BY spells the NULLS placement out."
+    }
+  ],
+  "questions": [],
+  "answered": []
+}

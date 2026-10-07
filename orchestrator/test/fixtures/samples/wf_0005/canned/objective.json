@@ -1,0 +1,18 @@
+{
+  "workflow": "wf_0005",
+  "title": "Vendor tool report",
+  "purpose": "A report built with a vendor tool no generator can translate.",
+  "tier": "T3",
+  "language": "sql",
+  "language_reason": null,
+  "inputs": [],
+  "outputs": [],
+  "steps": [
+    { "id": "s1", "name": "Run the vendor tool", "does": "Cannot be translated.", "tools": ["77"], "feeds": [] }
+  ],
+  "no_effect": [],
+  "rules": [],
+  "parity_risks": [],
+  "questions": [],
+  "answered": []
+}

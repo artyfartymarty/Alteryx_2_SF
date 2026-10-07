@@ -1,0 +1,8 @@
+[
+  {
+    "file": "01_scores_dropped.py",
+    "golden_set": "normal",
+    "expect": { "class": "MISSING_ROWS", "columns": ["SCORE"] },
+    "note": "A whole-file broken build for the fixer scenarios of a Python workflow."
+  }
+]

@@ -1,0 +1,260 @@
+{
+  "workflow": "wf_0003",
+  "title": "GL period close",
+  "purpose": "Closes a general-ledger period for one region: keeps the latest entry per account and day, runs a balance per account, and loads one row per account and period -- total, closing balance and entry count -- into GL_SUMMARY.",
+  "tier": "T1",
+  "language": "sql",
+  "language_reason": null,
+  "inputs": [
+    {
+      "tool_id": "1",
+      "logical": "GL_LEDGER",
+      "columns": [
+        {
+          "name": "ACCT",
+          "type": "VARCHAR(20)",
+          "nullable": true
+        },
+        {
+          "name": "PERIOD",
+          "type": "VARCHAR(7)",
+          "nullable": true
+        },
+        {
+          "name": "POSTED",
+          "type": "VARCHAR(10)",
+          "nullable": true
+        },
+        {
+          "name": "AMOUNT",
+          "type": "NUMBER(19,2)",
+          "nullable": true
+        },
+        {
+          "name": "REGION",
+          "type": "VARCHAR(10)",
+          "nullable": true
+        },
+        {
+          "name": "ENTRY_ID",
+          "type": "NUMBER(38,0)",
+          "nullable": true
+        }
+      ],
+      "keys": []
+    }
+  ],
+  "outputs": [
+    {
+      "tool_id": "10",
+      "logical": "GL_SUMMARY",
+      "write_mode": "update_insert",
+      "pre_sql": "DELETE FROM dbo.GL_SUMMARY WHERE PERIOD < '2020-01'",
+      "post_sql": "UPDATE dbo.GL_SUMMARY SET LOADED_FLAG = 'Y' WHERE LOADED_FLAG IS NULL",
+      "grain": "one row per account and period",
+      "columns": [
+        {
+          "name": "ACCT",
+          "type": "VARCHAR(20)",
+          "nullable": true,
+          "meaning": "Account"
+        },
+        {
+          "name": "PERIOD",
+          "type": "VARCHAR(7)",
+          "nullable": true,
+          "meaning": "Accounting period"
+        },
+        {
+          "name": "TOTAL",
+          "type": "NUMBER(19,2)",
+          "nullable": true,
+          "meaning": "Sum of the kept entries' AMOUNT for the account and period"
+        },
+        {
+          "name": "CLOSING_BAL",
+          "type": "FLOAT",
+          "nullable": true,
+          "meaning": "Running balance of the account at its last entry in the period"
+        },
+        {
+          "name": "ENTRIES",
+          "type": "NUMBER(38,0)",
+          "nullable": true,
+          "meaning": "Number of kept entries (rows, whether or not they carry an ENTRY_ID)"
+        },
+        {
+          "name": "HAS_PERIOD_END",
+          "type": "VARCHAR(1)",
+          "nullable": true,
+          "meaning": "Y when any kept entry was posted on the period-end date, otherwise N"
+        },
+        {
+          "name": "LOADED_FLAG",
+          "type": "VARCHAR(1)",
+          "nullable": true,
+          "meaning": "Set to Y by the PostSQL on rows that have none yet; not written by the summary itself, so NULL on a row the run inserted until the PostSQL runs"
+        }
+      ],
+      "keys": [
+        "ACCT",
+        "PERIOD"
+      ],
+      "row_relation": "aggregate",
+      "ordering": {
+        "keys": [
+          "ACCT",
+          "POSTED_DT",
+          "ENTRY_ID"
+        ],
+        "alteryx_deterministic": true,
+        "order_dependent_columns": [
+          "CLOSING_BAL"
+        ]
+      },
+      "tolerances": {},
+      "normalizations": []
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "name": "Extract the region's ledger entries",
+      "does": "Reads GL_LEDGER (the source query keeps only rows whose AMOUNT is not 0), keeps the run's region (the workflow constant User.Region, EMEA) and parses POSTED from dd/mm/yyyy text into a date-time (POSTED_DT).",
+      "tools": [
+        "1",
+        "2",
+        "3"
+      ],
+      "feeds": [
+        "s2"
+      ]
+    },
+    {
+      "id": "s2",
+      "name": "Keep the latest entry per account and day",
+      "does": "Sorts by ACCT, POSTED_DT ascending and ENTRY_ID descending, then keeps the first row for each ACCT and POSTED_DT, which is the one with the largest ENTRY_ID.",
+      "tools": [
+        "4",
+        "5"
+      ],
+      "feeds": [
+        "s3"
+      ]
+    },
+    {
+      "id": "s3",
+      "name": "Running balance and period-end flag",
+      "does": "Adds a running balance (RUN_BAL) per account in that order, numbers the rows (RecordID) and flags the postings made on the period-end date (the constant User.PeriodEnd, 2026-08-31) in PERIOD_END_FLAG.",
+      "tools": [
+        "6",
+        "7",
+        "8"
+      ],
+      "feeds": [
+        "s4"
+      ]
+    },
+    {
+      "id": "s4",
+      "name": "Close the period and load GL_SUMMARY",
+      "does": "Summarizes per ACCT and PERIOD (total AMOUNT, the last RUN_BAL as the closing balance, the entry count, whether any posting is on the period-end date); deletes GL_SUMMARY rows before 2020-01, merges the summary in on ACCT and PERIOD, and then sets LOADED_FLAG to Y where it is still NULL.",
+      "tools": [
+        "9",
+        "10"
+      ],
+      "feeds": [
+        "out:10"
+      ]
+    }
+  ],
+  "no_effect": [],
+  "rules": [
+    "Only the ledger rows of the run's region (User.Region, EMEA) are used.",
+    "Rows whose AMOUNT is 0 or NULL never reach the workflow: the source query drops them.",
+    "When an account has several entries on one day, only the one with the largest ENTRY_ID is kept.",
+    "CLOSING_BAL is the running balance on the last row of the account and period in the order the rows are numbered after the sort.",
+    "GL_SUMMARY is updated, not replaced: a row with the same ACCT and PERIOD is overwritten, a new one is inserted and every other row stays exactly as it was.",
+    "Before the load, GL_SUMMARY rows with PERIOD earlier than 2020-01 are deleted; after it, LOADED_FLAG is set to Y wherever it is still NULL.",
+    "HAS_PERIOD_END is Y when any kept entry of the account and period was posted on the period-end date."
+  ],
+  "parity_risks": [
+    {
+      "tool_id": "1",
+      "class": "LOGIC",
+      "note": "The Input tool's own query carries `WHERE AMOUNT <> 0`. The translation reads the mapped table rather than running that query, so the predicate has to be written out again; without it every zero or NULL amount would reach the rest of the workflow, which Alteryx never saw."
+    },
+    {
+      "tool_id": "2",
+      "class": "NULL_SEMANTICS",
+      "note": "Filter [REGION] = [User.Region]: a NULL REGION makes the expression NULL, and Alteryx sends both false AND NULL to the False anchor. That anchor is not wired, so those rows simply leave the workflow -- which is also what a three-valued SQL WHERE does with them."
+    },
+    {
+      "tool_id": "2",
+      "class": "LOGIC",
+      "note": "[User.Region] is a workflow constant, not a column. Its value ('EMEA') is resolved at translation time into a literal; nothing at run time supplies it, and a run wanting another region needs a new translation."
+    },
+    {
+      "tool_id": "3",
+      "class": "NULL_SEMANTICS",
+      "note": "The DateTime tool reads dd/mm/yyyy text and writes NULL for text the format cannot read, so TRY_TO_TIMESTAMP_NTZ (not TO_TIMESTAMP_NTZ) is the warn-and-null form; 31/02/2026 is the row that proves it."
+    },
+    {
+      "tool_id": "3",
+      "class": "TYPE",
+      "note": "POSTED_DT is an Alteryx DateTime, so a parsed date carries midnight: the column is TIMESTAMP_NTZ, not DATE, and comparing it against a DATE would be a type difference."
+    },
+    {
+      "tool_id": "4",
+      "class": "ORDERING",
+      "note": "The Sort is not cosmetic: tools 5, 6, 7 and 9 all read its row order. NULL sorts first ascending and last descending, so every window's ORDER BY spells the NULLS placement out."
+    },
+    {
+      "tool_id": "5",
+      "class": "LOGIC",
+      "note": "Unique keeps the FIRST row of each (ACCT, POSTED_DT) in incoming order, and incoming order is the Sort's ENTRY_ID DESC, so the surviving duplicate is the one with the LARGEST ENTRY_ID. A row number taken in any other order changes which row's AMOUNT reaches the Summarize."
+    },
+    {
+      "tool_id": "5",
+      "class": "NULL_SEMANTICS",
+      "note": "Unique compares key values exactly, and two NULL POSTED_DT rows of the same ACCT count as the same key. PARTITION BY treats NULLs as one group, which is the same rule."
+    },
+    {
+      "tool_id": "6",
+      "class": "ROUNDING",
+      "note": "RUN_BAL is a Double field, so the model adds the exact decimal amounts and converts to a binary double when it stores each row. The translation sums the NUMBER column in a window and casts once, which agrees for every amount in the golden sets; a running total long enough to lose a double's precision would not."
+    },
+    {
+      "tool_id": "7",
+      "class": "ORDERING",
+      "note": "Record ID numbers rows in incoming order, so its value depends entirely on the Sort. It never reaches the target -- the Summarize drops it -- but CLOSING_BAL is defined as the last row by that number, so ordering.order_dependent_columns names CLOSING_BAL."
+    },
+    {
+      "tool_id": "8",
+      "class": "NULL_SEMANTICS",
+      "note": "IIF's condition is NULL when POSTED_DT is NULL, and a NULL condition takes the else branch in both Alteryx and SQL, so those rows are flagged 'N' rather than NULL."
+    },
+    {
+      "tool_id": "9",
+      "class": "LOGIC",
+      "note": "Alteryx's Count counts ROWS, not values, so ENTRIES is COUNT(*) and the edge set's NULL-ENTRY_ID row still counts as one."
+    },
+    {
+      "tool_id": "9",
+      "class": "ORDERING",
+      "note": "Last takes the group's last row in incoming order, including a NULL. There is no ordered aggregate for it in either dialect, so the translation takes the value at the largest RECORD_ID; that is the same row as long as RECORD_ID is unique, which it is because it is a row number."
+    },
+    {
+      "tool_id": "10",
+      "class": "NULL_SEMANTICS",
+      "note": "Update; Insert if new maps columns to the target by NAME and writes only the six the Summarize produces. LOADED_FLAG is left untouched on a matched row and arrives NULL on an inserted one, which is precisely what the PostSQL then fills. A NULL update key matches nothing, so the edge set's NULL-ACCT group is inserted rather than merged."
+    },
+    {
+      "tool_id": "10",
+      "class": "LOGIC",
+      "note": "The golden output is the target's state AFTER PreSQL, write and PostSQL -- not this run's rows. A row the run does not touch (9999) stays exactly as it was, and PERIOD < '2020-01' is deleted before anything is written."
+    }
+  ],
+  "questions": [],
+  "answered": []
+}

@@ -1,0 +1,47 @@
+[
+  {
+    "file": "01_cleansing_without_upper.sql",
+    "golden_set": "normal",
+    "expect": {
+      "class": "LOGIC",
+      "columns": [
+        "CITY",
+        "NAME"
+      ],
+      "output": "CUSTOMER_ORDER_FACT",
+      "scope": "columns"
+    },
+    "compiles": true,
+    "note": "The output declares no keys (the edge golden set holds CUST_ID 12 twice as byte-identical rows), so rows are paired by nearest match: NAME and CITY differ and upper-casing is the whole of the difference (the cluster carries the hint case_only)."
+  },
+  {
+    "file": "02_cleansing_keeps_null_names.sql",
+    "golden_set": "normal",
+    "expect": {
+      "class": "NULL_SEMANTICS",
+      "columns": [
+        "NAME"
+      ],
+      "output": "CUSTOMER_ORDER_FACT",
+      "scope": "columns"
+    },
+    "compiles": true,
+    "note": "`replace NULL strings with blank` is the option the NOT NULL declaration of NAME rests on; dropping it puts a NULL in NAME."
+  },
+  {
+    "file": "03_union_drops_the_join_left_branch.sql",
+    "golden_set": "normal",
+    "expect": {
+      "class": "NULL_SEMANTICS",
+      "columns": [
+        "AMOUNT",
+        "ORDER_DATE",
+        "ORDER_ID"
+      ],
+      "output": "CUSTOMER_ORDER_FACT",
+      "scope": "rows"
+    },
+    "compiles": true,
+    "note": "The NO_ORDERS customer is missing from the target. The output declares no keys, so the missing row is a surplus row with nothing to pair it with and goes through the row-presence rule, which reaches NULL_SEMANTICS before LOGIC: that row is exactly the unmatched left-join row, so ORDER_ID, AMOUNT and ORDER_DATE are NULL in it and are not NULL throughout the golden data."
+  }
+]

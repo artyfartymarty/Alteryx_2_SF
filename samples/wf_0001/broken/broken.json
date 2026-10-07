@@ -1,0 +1,57 @@
+[
+  {
+    "file": "01_filter_false_drops_null_region.sql",
+    "golden_set": "normal",
+    "expect": {
+      "class": "NULL_SEMANTICS",
+      "columns": [
+        "REGION"
+      ],
+      "output": "EXCLUDED_ORDERS",
+      "scope": "rows"
+    },
+    "compiles": true,
+    "note": "EXCLUDED_ORDERS declares no keys (the edge golden set holds two byte-identical ORDER_ID 103 rows), so the missing order is a surplus row of the multiset difference; REGION is NULL in it and is not NULL throughout the golden data, so REGION is the column that explains it."
+  },
+  {
+    "file": "02_select_customer_not_truncated.sql",
+    "golden_set": "normal",
+    "expect": {
+      "class": "TRUNCATION",
+      "columns": [
+        "CUSTOMER"
+      ],
+      "output": "EXCLUDED_ORDERS",
+      "scope": "columns"
+    },
+    "compiles": true,
+    "note": "Keyless like the case above: the one surplus row on each side differs in CUSTOMER alone ('Echo Suppl' against 'Echo Supplies'), so the nearest-match pairing puts them together and the class is TRUNCATION. The cluster carries paired_by: nearest_match."
+  },
+  {
+    "file": "03_net_rounds_the_raw_float.sql",
+    "golden_set": "normal",
+    "expect": {
+      "class": "ROUNDING",
+      "columns": [
+        "TOTAL_NET"
+      ],
+      "output": "SALES_SUMMARY",
+      "scope": "columns"
+    },
+    "compiles": true
+  },
+  {
+    "file": "04_filter_true_keeps_null_region.sql",
+    "golden_set": "normal",
+    "expect": {
+      "class": "NULL_SEMANTICS",
+      "columns": [
+        "REGION"
+      ],
+      "output": "SALES_SUMMARY",
+      "scope": "columns"
+    },
+    "compiles": true,
+    "note": "The mirror of case 01, on a keyed output: the NULL-region rows reach the Summarize and open a group whose REGION is NULL, in a column the objective declares NOT NULL. A second LOGIC cluster (scope rows) says the group is not in the golden output."
+  }
+]

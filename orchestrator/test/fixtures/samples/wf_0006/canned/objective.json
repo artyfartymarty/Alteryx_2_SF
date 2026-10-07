@@ -1,0 +1,43 @@
+{
+  "workflow": "wf_0006",
+  "title": "Scored leads",
+  "purpose": "Scores each lead with a Python tool the SQL dialect cannot express.",
+  "tier": "T2",
+  "language": "python",
+  "language_reason": "The workflow's Python tool computes the score; Snowflake SQL has no equivalent.",
+  "inputs": [
+    {
+      "tool_id": "1",
+      "logical": "LEADS",
+      "columns": [{ "name": "LEAD_ID", "type": "NUMBER(38,0)", "nullable": false }],
+      "keys": []
+    }
+  ],
+  "outputs": [
+    {
+      "tool_id": "3",
+      "logical": "SCORED_LEADS",
+      "write_mode": "overwrite",
+      "pre_sql": null,
+      "post_sql": null,
+      "grain": "one row per lead",
+      "columns": [
+        { "name": "LEAD_ID", "type": "NUMBER(38,0)", "nullable": false, "meaning": "lead id" },
+        { "name": "SCORE", "type": "FLOAT", "nullable": true, "meaning": "lead score" }
+      ],
+      "keys": ["LEAD_ID"],
+      "row_relation": "1:1",
+      "ordering": { "keys": [], "alteryx_deterministic": true, "order_dependent_columns": [] },
+      "tolerances": {},
+      "normalizations": []
+    }
+  ],
+  "steps": [
+    { "id": "s1", "name": "Score the leads", "does": "Scores each lead.", "tools": ["1", "2", "3"], "feeds": ["out:3"] }
+  ],
+  "no_effect": [],
+  "rules": [],
+  "parity_risks": [],
+  "questions": [],
+  "answered": []
+}

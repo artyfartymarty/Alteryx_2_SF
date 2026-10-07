@@ -1,0 +1,23 @@
+# The dbt profile of the project exported from workflows/wf_0002/build.sql. No credential belongs in this file.
+# `local` is the DuckDB double scripts/validate_dbt.py runs the project on. The Snowflake target below is a
+# template: copy it into your own profiles.yml (outside the repository), fill in the placeholders, and keep any
+# secret in your environment or your password manager. Nothing in it has ever run: dbt-snowflake is not installed
+# in this repository's environment.
+mig_wf_0002:
+  target: local
+  outputs:
+    local:
+      type: duckdb
+      path: "{{ env_var('MIG_DBT_DUCKDB_PATH', 'dbt_sandbox.duckdb') }}"
+      schema: "{{ var('tgt_schema') }}"
+      threads: 1
+    # snowflake:
+    #   type: snowflake
+    #   account: <account identifier>
+    #   user: <user name>
+    #   authenticator: externalbrowser        # or another method of your account; never a password in this file
+    #   role: <role>
+    #   warehouse: <warehouse>
+    #   database: <database holding the source views and the target schema>
+    #   schema: "{{ var('tgt_schema') }}"
+    #   threads: 1                            # one thread keeps the run order close to build.sql's; raise it if you like

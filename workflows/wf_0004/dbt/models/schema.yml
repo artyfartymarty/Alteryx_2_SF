@@ -1,0 +1,39 @@
+# not_null and unique state the objective's contract. They are advisories (severity: warn), exactly as
+# scripts/compare.py treats a golden NULL in a NOT NULL column and a repeating key: a test that warns says
+# the contract is worth revisiting; it never fails the build.
+version: 2
+models:
+  - name: inventory_by_wh
+    description: "one row per SKU and family"
+    columns:
+      - name: SKU
+        description: "Cleaned, upper-cased SKU code"
+        data_tests:
+          - not_null:
+              config:
+                severity: warn
+      - name: FAMILY
+        description: "The letters before the dash of the SKU; NULL when the SKU did not match"
+      - name: EAST
+        description: "Total QTY in the EAST warehouse for the SKU and family; NULL when it has no stock rows there"
+      - name: NORTH
+        description: "Total QTY in the NORTH warehouse for the SKU and family; NULL when it has no stock rows there"
+      - name: WEST
+        description: "Total QTY in the WEST warehouse for the SKU and family; NULL when it has no stock rows there"
+  - name: inventory_long
+    description: "one row per pivot row and warehouse (EAST, NORTH, WEST), without the family"
+    columns:
+      - name: SKU
+        description: "Cleaned, upper-cased SKU code"
+        data_tests:
+          - not_null:
+              config:
+                severity: warn
+      - name: NAME
+        description: "Warehouse the value comes from: EAST, NORTH or WEST"
+        data_tests:
+          - not_null:
+              config:
+                severity: warn
+      - name: VALUE
+        description: "Total quantity of the SKU in that warehouse; NULL when it has none"

@@ -1,0 +1,265 @@
+{
+  "workflow": "wf_0001",
+  "title": "Sales summary by region and size band",
+  "purpose": "Totals each region's net order value by size band, leaving WEST out, and lists the left-out orders.",
+  "tier": "T1",
+  "language": "sql",
+  "language_reason": null,
+  "inputs": [
+    {
+      "tool_id": "1",
+      "logical": "ORDERS",
+      "columns": [
+        {
+          "name": "ORDER_ID",
+          "type": "NUMBER(38,0)",
+          "nullable": true
+        },
+        {
+          "name": "CUSTOMER",
+          "type": "VARCHAR(50)",
+          "nullable": true
+        },
+        {
+          "name": "REGION",
+          "type": "VARCHAR(20)",
+          "nullable": true
+        },
+        {
+          "name": "AMOUNT_TXT",
+          "type": "VARCHAR(20)",
+          "nullable": true
+        },
+        {
+          "name": "QTY",
+          "type": "NUMBER(38,0)",
+          "nullable": true
+        },
+        {
+          "name": "ORDER_DATE",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "STATUS",
+          "type": "VARCHAR(10)",
+          "nullable": true
+        }
+      ],
+      "keys": []
+    }
+  ],
+  "outputs": [
+    {
+      "tool_id": "7",
+      "logical": "SALES_SUMMARY",
+      "write_mode": "overwrite",
+      "pre_sql": null,
+      "post_sql": null,
+      "grain": "one row per region and size band",
+      "columns": [
+        {
+          "name": "REGION",
+          "type": "VARCHAR(20)",
+          "nullable": true,
+          "meaning": "the region"
+        },
+        {
+          "name": "SIZE_BAND",
+          "type": "VARCHAR(10)",
+          "nullable": true,
+          "meaning": "the size band"
+        },
+        {
+          "name": "TOTAL_NET",
+          "type": "FLOAT",
+          "nullable": true,
+          "meaning": "the total net"
+        },
+        {
+          "name": "ORDERS",
+          "type": "NUMBER(38,0)",
+          "nullable": true,
+          "meaning": "the orders"
+        },
+        {
+          "name": "PRICED_ORDERS",
+          "type": "NUMBER(38,0)",
+          "nullable": true,
+          "meaning": "the priced orders"
+        },
+        {
+          "name": "LAST_ORDER",
+          "type": "DATE",
+          "nullable": true,
+          "meaning": "the last order"
+        }
+      ],
+      "keys": [
+        "REGION",
+        "SIZE_BAND"
+      ],
+      "row_relation": "aggregate",
+      "ordering": {
+        "keys": [
+          "TOTAL_NET",
+          "REGION"
+        ],
+        "alteryx_deterministic": true,
+        "order_dependent_columns": []
+      },
+      "tolerances": {
+        "TOTAL_NET": {
+          "float_abs": 0.01
+        }
+      },
+      "normalizations": [
+        "trim:REGION"
+      ]
+    },
+    {
+      "tool_id": "8",
+      "logical": "EXCLUDED_ORDERS",
+      "write_mode": "overwrite",
+      "pre_sql": null,
+      "post_sql": null,
+      "grain": "one row per excluded order",
+      "columns": [
+        {
+          "name": "CUSTOMER",
+          "type": "VARCHAR(10)",
+          "nullable": true,
+          "meaning": "the customer"
+        },
+        {
+          "name": "ORDER_STATUS",
+          "type": "VARCHAR(10)",
+          "nullable": true,
+          "meaning": "the order status"
+        },
+        {
+          "name": "ORDER_ID",
+          "type": "NUMBER(38,0)",
+          "nullable": true,
+          "meaning": "the order id"
+        },
+        {
+          "name": "REGION",
+          "type": "VARCHAR(20)",
+          "nullable": true,
+          "meaning": "the region"
+        },
+        {
+          "name": "AMOUNT_TXT",
+          "type": "VARCHAR(20)",
+          "nullable": true,
+          "meaning": "the amount txt"
+        },
+        {
+          "name": "QTY",
+          "type": "NUMBER(38,0)",
+          "nullable": true,
+          "meaning": "the qty"
+        },
+        {
+          "name": "ORDER_DATE",
+          "type": "DATE",
+          "nullable": true,
+          "meaning": "the order date"
+        }
+      ],
+      "keys": [],
+      "row_relation": "filter",
+      "ordering": {
+        "keys": [],
+        "alteryx_deterministic": true,
+        "order_dependent_columns": []
+      },
+      "tolerances": {},
+      "normalizations": []
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "name": "Read and clean orders",
+      "does": "Reads ORDERS and shortens CUSTOMER.",
+      "tools": [
+        "1",
+        "2"
+      ],
+      "feeds": [
+        "s2"
+      ]
+    },
+    {
+      "id": "s2",
+      "name": "Set aside the WEST region",
+      "does": "Splits WEST orders off.",
+      "tools": [
+        "3"
+      ],
+      "feeds": [
+        "s3",
+        "s5"
+      ]
+    },
+    {
+      "id": "s3",
+      "name": "Net value and size band",
+      "does": "Prices each order.",
+      "tools": [
+        "4"
+      ],
+      "feeds": [
+        "s4"
+      ]
+    },
+    {
+      "id": "s4",
+      "name": "Totals by region and band",
+      "does": "Sums by region and band and writes them.",
+      "tools": [
+        "5",
+        "6",
+        "7"
+      ],
+      "feeds": [
+        "out:7"
+      ]
+    },
+    {
+      "id": "s5",
+      "name": "List the excluded orders",
+      "does": "Writes the WEST orders.",
+      "tools": [
+        "8"
+      ],
+      "feeds": [
+        "out:8"
+      ]
+    }
+  ],
+  "no_effect": [],
+  "rules": [
+    "Orders whose region is WEST are written to EXCLUDED_ORDERS instead of the summary."
+  ],
+  "parity_risks": [
+    {
+      "tool_id": "3",
+      "class": "NULL_SEMANTICS",
+      "note": "A NULL region goes to the False side."
+    }
+  ],
+  "questions": [
+    {
+      "id": "O1",
+      "tools": [
+        "3"
+      ],
+      "question": "Is excluding the WEST region deliberate, or a leftover test filter?",
+      "assumption": "deliberate; WEST orders go to EXCLUDED_ORDERS."
+    }
+  ],
+  "answered": []
+}

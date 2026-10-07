@@ -1,0 +1,52 @@
+{
+  "workflow": "wf_0001",
+  "title": "Sales summary by region",
+  "purpose": "Totals each region's order amount for the weekly sales review, leaving out the WEST region.",
+  "tier": "T1",
+  "language": "sql",
+  "language_reason": null,
+  "inputs": [
+    {
+      "tool_id": "1",
+      "logical": "ORDERS",
+      "columns": [
+        { "name": "REGION", "type": "VARCHAR(20)", "nullable": true },
+        { "name": "AMOUNT", "type": "NUMBER(18,2)", "nullable": true }
+      ],
+      "keys": []
+    }
+  ],
+  "outputs": [
+    {
+      "tool_id": "4",
+      "logical": "SALES_SUMMARY",
+      "write_mode": "overwrite",
+      "pre_sql": null,
+      "post_sql": null,
+      "grain": "one row per region",
+      "columns": [
+        { "name": "REGION", "type": "VARCHAR(20)", "nullable": false, "meaning": "sales region" },
+        { "name": "TOTAL", "type": "NUMBER(38,2)", "nullable": true, "meaning": "sum of the region's amounts" }
+      ],
+      "keys": ["REGION"],
+      "row_relation": "aggregate",
+      "ordering": { "keys": [], "alteryx_deterministic": true, "order_dependent_columns": [] },
+      "tolerances": {},
+      "normalizations": []
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "name": "Total the orders by region",
+      "does": "Reads the orders, drops the WEST region and sums the amounts per region.",
+      "tools": ["1", "2", "3", "4"],
+      "feeds": ["out:4"]
+    }
+  ],
+  "no_effect": [],
+  "rules": ["Orders whose region is WEST are left out of the summary."],
+  "parity_risks": [],
+  "questions": [],
+  "answered": []
+}

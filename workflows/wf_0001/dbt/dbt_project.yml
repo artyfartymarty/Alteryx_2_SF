@@ -1,0 +1,13 @@
+name: mig_wf_0001
+version: "1.0.0"
+config-version: 2
+profile: mig_wf_0001
+model-paths: [models]
+vars:
+  src_schema: null
+  tgt_schema: null
+models:
+  +transient: false           # dbt-snowflake makes tables transient unless told otherwise; build.sql's CREATE TABLE is permanent
+  # the build's ALTER SESSION, on each model's own connection before its SQL (and before a PreSQL pre_hook)
+  +pre-hook:
+    - "{% if target.type == 'snowflake' %}ALTER SESSION SET TIMEZONE = 'America/New_York', WEEK_START = 1{% endif %}"

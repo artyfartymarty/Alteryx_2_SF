@@ -1,0 +1,13 @@
+version: 2
+sources:
+  - name: wf_0003
+    schema: "{{ var('src_schema') }}"
+    tables:
+      - name: GL_LEDGER
+        columns:
+          - name: ACCT
+          - name: PERIOD
+          - name: POSTED
+          - name: AMOUNT
+          - name: REGION
+          - name: ENTRY_ID
